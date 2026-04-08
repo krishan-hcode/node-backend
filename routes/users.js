@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const validateUser = require('../middleware/validateUser');
 
 // In-memory data (like a fake database for now)
 let users = [
@@ -20,7 +21,8 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /users — create a new user
-router.post('/', (req, res) => {
+// validateUser runs first — if it fails, route handler never runs
+router.post('/', validateUser, (req, res) => {
   const { name, email } = req.body;
   const newUser = { id: users.length + 1, name, email };
   users.push(newUser);
@@ -28,7 +30,8 @@ router.post('/', (req, res) => {
 });
 
 // PUT /users/:id — update a user
-router.put('/:id', (req, res) => {
+// validateUser also runs here — you can reuse the same middleware on multiple routes
+router.put('/:id', validateUser, (req, res) => {
   const user = users.find(u => u.id === parseInt(req.params.id));
   if (!user) return res.status(404).json({ message: 'User not found' });
 
