@@ -30,6 +30,11 @@ app.get('/', (req, res) => {
   res.json({ message: 'Hello from Node.js!' });
 });
 
+// Test route to verify error middleware behavior
+app.get('/test-error', (req, res, next) => {
+  next({ status: 418, message: 'Test error from route' });
+});
+
 // All /users routes are handled in routes/users.js
 app.use('/users', usersRouter);
 
