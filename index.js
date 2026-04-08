@@ -14,11 +14,20 @@
 const express = require('express');
 const app = express();
 const PORT = 3000;
-app.use(express.json()); // Parse JSON bodies (like fetch/axios POST data)
+
+const usersRouter = require('./routes/users');
+
+// Parse JSON bodies (like fetch/axios POST data)
+app.use(express.json());
+
 // GET route — like a Next.js API route GET handler
 app.get('/', (req, res) => {
   res.json({ message: 'Hello from Node.js!' });
 });
+
+// All /users routes are handled in routes/users.js
+app.use('/users', usersRouter);
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
