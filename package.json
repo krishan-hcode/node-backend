@@ -1,8 +1,8 @@
 {
   "scripts": {
-  "start": "node index.js",
-  "dev": "nodemon index.js"
-},
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
   "name": "node-backend",
   "version": "1.0.0",
   "main": "index.js",
@@ -10,6 +10,7 @@
   "author": "Krishan Rathore <krishan.rathore@hcode.tech>",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^17.4.1",
     "express": "^5.2.1"
   },
   "devDependencies": {
