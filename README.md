@@ -1,7 +1,8 @@
 # Node.js + Express — Learning Project
 
-A beginner-friendly Node.js REST API built while learning backend development.
-Covers project setup, Express routing, middleware, and REST API design.
+A beginner-friendly Node.js REST API for learning backend development: Express routing, middleware, environment variables, and MongoDB with Mongoose.
+
+**Setup, packages, and adding new CRUD resources:** see [setup.md](./setup.md).
 
 ---
 
@@ -9,44 +10,44 @@ Covers project setup, Express routing, middleware, and REST API design.
 
 - **Node.js** v24+
 - **Express.js** v5
-- **Nodemon** (dev only — auto restart on file changes)
-- **Yarn** (package manager)
+- **Mongoose** v9 (MongoDB ODM)
+- **dotenv**
+- **Nodemon** (dev)
+- **Yarn**
+- **MongoDB Community** (local)
+
+---
+
+## Quick Start
+
+```bash
+yarn install
+cp .env.template .env
+brew services start mongodb/brew/mongodb-community
+yarn dev
+```
+
+Server: `http://localhost:3000`
+
+Full instructions: [setup.md](./setup.md).
 
 ---
 
 ## Project Structure
 
 ```
-node-project/
-├── index.js              ← Entry point, Express app setup
-├── routes/
-│   └── users.js          ← All /users REST API routes
+node-backend/
+├── index.js
+├── config/db.js
+├── models/User.js
+├── routes/users.js
 ├── middleware/
-│   ├── logger.js         ← Logs every request to the console
-│   ├── validateUser.js   ← Validates POST/PUT body before hitting route
-│   └── errorHandler.js   ← Global error handler (registered last)
-├── package.json
-├── yarn.lock
+│   ├── logger.js
+│   ├── validateUser.js
+│   └── errorHandler.js
+├── setup.md
 └── README.md
 ```
-
----
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-yarn install
-```
-
-### 2. Start the dev server
-
-```bash
-yarn dev
-```
-
-Server runs at: `http://localhost:3000`
 
 ---
 
@@ -56,34 +57,39 @@ Server runs at: `http://localhost:3000`
 
 | Method | Route | Response |
 |--------|-------|----------|
-| GET | `/` | `{ message: 'Hello from Node.js!' }` |
+| GET | `/` | `{ "message": "Hello from Node.js!" }` |
 
 ### Users
 
 | Method | Route | Description |
 |--------|-------|-------------|
 | GET | `/users` | Get all users |
-| GET | `/users/:id` | Get one user by ID |
-| POST | `/users` | Create a new user |
-| PUT | `/users/:id` | Update a user |
-| DELETE | `/users/:id` | Delete a user |
+| GET | `/users/:id` | Get one user by MongoDB `_id` |
+| POST | `/users` | Create user (`name`, `email` required) |
+| PUT | `/users/:id` | Update user |
+| DELETE | `/users/:id` | Delete user |
+
+User IDs are MongoDB ObjectIds (for example `6a0c41b1da9cdfa8617d0653`), not numeric `1` or `2`.
 
 ---
 
 ## Example Requests
 
 ### GET all users
-```
+
+```http
 GET http://localhost:3000/users
 ```
 
 ### GET one user
-```
-GET http://localhost:3000/users/1
+
+```http
+GET http://localhost:3000/users/<_id>
 ```
 
 ### POST create user
-```
+
+```http
 POST http://localhost:3000/users
 Content-Type: application/json
 
@@ -94,8 +100,9 @@ Content-Type: application/json
 ```
 
 ### PUT update user
-```
-PUT http://localhost:3000/users/1
+
+```http
+PUT http://localhost:3000/users/<_id>
 Content-Type: application/json
 
 {
@@ -105,23 +112,44 @@ Content-Type: application/json
 ```
 
 ### DELETE user
-```
-DELETE http://localhost:3000/users/1
+
+```http
+DELETE http://localhost:3000/users/<_id>
 ```
 
 ---
 
 ## Key Concepts Learned
 
-### 1. Express Setup
+### 1. Express setup
+
 ```js
 const express = require('express');
 const app = express();
-app.use(express.json()); // parse JSON request bodies
+app.use(express.json());
 app.listen(3000);
 ```
 
-### 2. Express Router (splitting routes into files)
+### 2. Environment variables
+
+```js
+require('dotenv').config();
+const port = process.env.PORT || 3000;
+```
+
+### 3. MongoDB + Mongoose
+
+```js
+await mongoose.connect(process.env.MONGO_URI);
+
+const users = await User.find();
+const user = await User.create({ name, email });
+```
+
+Data persists across server restarts.
+
+### 4. Express Router
+
 ```js
 // routes/users.js
 const router = express.Router();
@@ -132,7 +160,8 @@ module.exports = router;
 app.use('/users', require('./routes/users'));
 ```
 
-### 3. req & res (compare with Next.js)
+### 5. req and res (compare with Next.js)
+
 | Next.js | Express |
 |---------|---------|
 | `request.json()` | `req.body` |
@@ -140,96 +169,61 @@ app.use('/users', require('./routes/users'));
 | `return Response.json(data)` | `res.json(data)` |
 | `return new Response(null, { status: 404 })` | `res.status(404).json(...)` |
 
-### 4. Middleware — the core of Express
-
-Every request flows through a **pipeline** of functions before hitting your route:
+### 6. Middleware pipeline
 
 ```
 Request → [logger] → [validateUser] → Route Handler → Response
 ```
 
-Each middleware has the signature `(req, res, next)`:
-- Call `next()` to pass to the next step
-- Call `res.json(...)` to stop the pipeline and respond immediately
-
-**3 types of middleware used in this project:**
-
 | File | Type | Registered |
 |------|------|------------|
-| `middleware/logger.js` | Global | `app.use(logger)` — runs on every request |
-| `middleware/validateUser.js` | Route-level | `router.post('/', validateUser, handler)` — only on POST/PUT |
-| `middleware/errorHandler.js` | Error handler | `app.use(errorHandler)` — must be last in index.js |
+| `middleware/logger.js` | Global | `app.use(logger)` |
+| `middleware/validateUser.js` | Route-level | `router.post('/', validateUser, handler)` |
+| `middleware/errorHandler.js` | Error handler | `app.use(errorHandler)` — must be last |
 
-**Global middleware** (logger):
-```js
-const logger = (req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next(); // always call next() or the request hangs
-};
-app.use(logger); // before routes
-```
+**Error handler** (4 parameters):
 
-**Route-level middleware** (validateUser):
-```js
-// Pass middleware as 2nd argument — runs before the handler
-router.post('/', validateUser, (req, res) => { ... });
-
-// Same middleware can be reused on multiple routes
-router.put('/:id', validateUser, (req, res) => { ... });
-```
-
-**Error handler** (4 params — Express detects this automatically):
 ```js
 const errorHandler = (err, req, res, next) => {
   res.status(err.status || 500).json({ message: err.message });
 };
-app.use(errorHandler); // LAST — after all routes
+app.use(errorHandler);
 ```
 
-**Triggering the error handler** from any route:
+**Trigger from a route:**
+
 ```js
-router.get('/:id', (req, res, next) => {
-  try {
-    // ... something that might throw
-  } catch (err) {
-    next(err); // passes error to errorHandler
-  }
-});
+return next({ status: 404, message: 'User not found' });
 ```
 
-### 5. HTTP Status Codes used
+### 7. HTTP status codes
+
 | Code | Meaning |
 |------|---------|
-| 200 | OK (default) |
+| 200 | OK |
 | 201 | Created |
 | 400 | Bad Request (validation failed) |
 | 404 | Not Found |
 | 500 | Internal Server Error |
 
-### 6. Data is stored in-memory (no database yet)
-```js
-let users = [
-  { id: 1, name: 'Alice', email: 'alice@example.com' },
-];
-```
-> Data resets every time the server restarts. Database comes in the next phase.
-
 ---
 
-## What's Next (Upcoming Topics)
+## What's Next
 
 - [x] **Express Setup** — server, routing, CRUD
 - [x] **Middleware** — logger, validation, error handling, `next()`
-- [ ] **Environment Variables** — `.env` file with `dotenv`
-- [ ] **Database** — MongoDB + Mongoose or PostgreSQL + Prisma
-- [ ] **Authentication** — JWT login & protected routes
+- [x] **Environment Variables** — `.env` with `dotenv`
+- [x] **Database** — MongoDB + Mongoose
+- [ ] **Authentication** — JWT login and protected routes
 - [ ] **Deploy** — Railway / Render
 
 ---
 
 ## Notes
 
-- `yarn dev` uses **nodemon** — server auto-restarts on file save
-- Browser does NOT auto-refresh (no HMR like React) — manually refresh or use Postman/Thunder Client
-- Use **Thunder Client** (VS Code extension) or **Postman** to test API endpoints
-- Middleware order matters — logger before routes, errorHandler after all routes
+- `yarn dev` uses nodemon — the server restarts when you save files
+- Use **Thunder Client** or **Postman** to test API endpoints
+- Middleware order: `express.json` → `logger` → routes → `errorHandler` (last)
+- MongoDB must be running before starting the server
+
+For package lists, troubleshooting, and adding new CRUD routes, see [setup.md](./setup.md).
