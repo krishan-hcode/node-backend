@@ -17,6 +17,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const connectDB = require('./config/db');
 const usersRouter = require('./routes/users');
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
@@ -44,6 +45,17 @@ app.use('/users', usersRouter);
 // Express knows it's an error handler because it has 4 params: (err, req, res, next)
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error.message);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -1,54 +1,80 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const validateUser = require('../middleware/validateUser');
-
-// In-memory data (like a fake database for now)
-let users = [
-  { id: 1, name: 'Alice', email: 'alice@example.com' },
-  { id: 2, name: 'Bob', email: 'bob@example.com' },
-];
+const User = require('../models/User');
 
 // GET /users — get all users
-router.get('/', (req, res) => {
-  res.json(users);
+router.get('/', async (req, res, next) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /users/:id — get one user by id
-router.get('/:id', (req, res, next) => {
-  const user = users.find(u => u.id === parseInt(req.params.id));
-  if (!user) return next({ status: 404, message: 'User not found' });
-  res.json(user);
+router.get('/:id', async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return next({ status: 404, message: 'User not found' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return next({ status: 404, message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /users — create a new user
-// validateUser runs first — if it fails, route handler never runs
-router.post('/', validateUser, (req, res) => {
-  const { name, email } = req.body;
-  const newUser = { id: users.length + 1, name, email };
-  users.push(newUser);
-  res.status(201).json(newUser);
+router.post('/', validateUser, async (req, res, next) => {
+  try {
+    const { name, email } = req.body;
+    const newUser = await User.create({ name, email });
+    res.status(201).json(newUser);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /users/:id — update a user
-// validateUser also runs here — you can reuse the same middleware on multiple routes
-router.put('/:id', validateUser, (req, res, next) => {
-  const user = users.find(u => u.id === parseInt(req.params.id));
-  if (!user) return next({ status: 404, message: 'User not found' });
+router.put('/:id', validateUser, async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return next({ status: 404, message: 'User not found' });
+    }
 
-  const { name, email } = req.body;
-  if (name) user.name = name;
-  if (email) user.email = email;
+    const { name, email } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { name, email },
+      { new: true, runValidators: true }
+    );
 
-  res.json(user);
+    if (!user) return next({ status: 404, message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /users/:id — delete a user
-router.delete('/:id', (req, res, next) => {
-  const index = users.findIndex(u => u.id === parseInt(req.params.id));
-  if (index === -1) return next({ status: 404, message: 'User not found' });
+router.delete('/:id', async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return next({ status: 404, message: 'User not found' });
+    }
 
-  users.splice(index, 1);
-  res.json({ message: 'User deleted' });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return next({ status: 404, message: 'User not found' });
+
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
